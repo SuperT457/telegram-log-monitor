@@ -1,0 +1,4 @@
+MY_TOKEN="YOUR-BOT-TOKEN"
+CHAT_ID="YOUR-CHAT-ID"
+LOG_DIR="/path/to/logfile"
+LOG_FILE="filename.log"
