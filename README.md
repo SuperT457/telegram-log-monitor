@@ -13,35 +13,16 @@ Every time new lines are added to the log file, it parse the logs retrieving cri
 ## Requirements
 - python 3.10+
 
-The python modules to be installed are in the `requirements.txt` file and can be installed with:
-```
-pip3 install -r requirements.txt`
-```
-
-It is also possibile that you'll need to create a virtual environment in order to install the requirements. This can be done with:
-```
-python3 -m venv .venv
-```
-
-And then:
-```
-source /path/to/.venv/bin/activate
-```
-Before installing the needed modules.
-
-This script is not OS-specific, but in this repository at the moment only provides linux systemd service for automation.
+This script is not OS-specific, but in this repository at the moment only provides linux installation guide.
 
 ## Install & run
-The quickest way to start this script is by copying the `telegram-monitor.service` to the systemd directory and run the service. 
-You can do it in your home directory:
+To install the script, you can easily clone the repository and run the `install.sh` script:
+
 ```
-cp telegram-monitor.service ~/.config/systemd/system/
-systemctl --user start telegram-monitor.service
-```
-Or, if you need root privileges: 
-```
-sudo cp telegram-monitor.service /etc/systemd/system/
-sudo systemctl start telegram-monitor.service
+git clone https://github.com/SuperT457/telegram-log-monitor.git
+cd telegram-log-monitor
+./install.sh LOGFILE [OPTION] ...
 ```
 
-In bot cases you'll need to edit the unit file with your personal paths where you script and log file are.
+To run the installation script you must provide, as CLI argument, the path to the log file you wish to monitor, then you may add some flags to custom your environment of execution. Run `./install.sh -h` for more details.
+This script copies the python script to a directory where you it to be executed. Then, after providing needed information via command line o as arguments, it will create an environment of execution and a systemd service that will automatically start. By default, the daemon is a root daemon, working in `/etc/systemd/system`, but you can create a custom user service with the `--user-service` flag, and it'll then be store in `~/.config/systemd/user`.
