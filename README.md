@@ -9,6 +9,7 @@ Every time new lines are added to the log file, it parse the logs retrieving cri
 - To reduce notifcation quantity and noise, the script filter only for specific URIs, considered more critical;
 - For a new IP, geographical information are retrieved using ipinfo.io APIs, while those already checked are stored in a cache, implemented with a dictionary;
 - At the end of the loop, telegram APIs are used to alert the user with a message containg all the recent accesses;
+- This script generates logs for information and errors. If the users has sufficient privileges, the ouput log file will be automatically created in`/var/log/telegram-log-monitor.log`, otherwise it'll be stored in `~/.local/shre/telegram-log-monitor.log`. 
 
 ## Requirements
 - python 3.10+
@@ -26,3 +27,7 @@ cd telegram-log-monitor
 
 To run the installation script you must provide, as CLI argument, the path to the log file you wish to monitor, then you may add some flags to custom your environment of execution. Run `./install.sh -h` for more details.
 This script copies the python script to a directory where you it to be executed. Then, after providing needed information via command line o as arguments, it will create an environment of execution and a systemd service that will automatically start. By default, the daemon is a root daemon, working in `/etc/systemd/system`, but you can create a custom user service with the `--user-service` flag, and it'll then be store in `~/.config/systemd/user`.
+
+## Future upgrades 
+- I intend to integrate `ip_cache` and `last_pos` in a class as attributes for major code readbility and cleaness;
+- Divide the project into more files   
