@@ -179,8 +179,12 @@ def init_cache():
     ip_cache = defaultdict(new_cache_entry)
 
 async def main():
+    OUTPUTFILE="/var/log/telegram-log-monitor.log"
+    if not os.access(OUTPUTFILE,os.W_OK):
+        OUTPUTFILE=os.path.join(os.path.expanduser('~'),'.local/share/telegram-log-monitor.log')
+
     FORMAT = '[%(levelname)s] %(asctime)s: %(message)s'
-    logging.basicConfig(format=FORMAT,filename="/var/log/telegram-log-monitor.log",level=logging.INFO)
+    logging.basicConfig(format=FORMAT,filename=OUTPUTFILE,level=logging.INFO)
 
     init_cache()
     
@@ -197,7 +201,7 @@ async def main():
     try:
         await process_log(queue)
     except Exception as e:
-        print(f"Unkown error {e}")
+        logger.error(f"Unkown exception ({e}) in main process_log")
         exit(2)
     finally:
         observer.stop()
