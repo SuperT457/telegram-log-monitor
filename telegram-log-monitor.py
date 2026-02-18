@@ -4,9 +4,10 @@ from collections import defaultdict
 from telegram import Bot # v22.5 
 import asyncio
 import aiohttp
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 import logging
+from watchdog.observers import Observer
+from log_handler import LogHandler 
+from caches import Cache
 
 # bot parameters
 TELEGRAM_BOT_TOKEN = os.getenv("MY_TOKEN")
@@ -14,14 +15,14 @@ CHAT_ID = os.getenv("CHAT_ID")
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 # monitored logs path 
-LOG_PATH = os.getenv("LOG_PATH")
-LOG_DIR = os.path.dirname(LOG_PATH)
+LOG_PATH = os.getenv("LOG_PATH") 
+LOG_DIR = os.path.dirname(LOG_PATH) # for the observer
+
 
 # script's output logger
 logger = logging.getLogger(__name__)
 
-last_pos = 0
-ip_cache = {}
+cache = Cache() # script cache
 
 watched_uris = [
         '/',
@@ -29,18 +30,6 @@ watched_uris = [
         '/identity/connect/token',
         '/api/sync'
 ]
-
-class LogHandler(FileSystemEventHandler):
-    def __init__(self, loop, queue):
-        self.loop = loop
-        self.queue = queue
-
-    def on_modified(self,event):
-        if event.src_path == LOG_PATH:
-            self.loop.call_soon_threadsafe(
-                self.queue.put_nowait,
-                None
-            )
 
 # bot send message
 async def send_message(text, chat_id):
@@ -62,15 +51,9 @@ def new_ip_entry():
             "status": ''
     }
 
-def new_cache_entry():
-    return {
-        'city': '',
-        'region': ''
-    }
-
 async def get_ipinfo(ip,session):
-    if ip in ip_cache:
-        entry = ip_cache[ip]
+    if ip in cache.ip_cache:
+        entry = cache.ip_cache[ip]
         city = entry['city']
         region = entry['region']
         if city and region:
@@ -85,8 +68,8 @@ async def get_ipinfo(ip,session):
             city = data.get('city','Error retrieving city')
             region = data.get('region','Error retrieving region')
 
-            ip_cache[ip]['city'] = city
-            ip_cache[ip]['region'] = region
+            cache.ip_cache[ip]['city'] = city
+            cache.ip_cache[ip]['region'] = region
 
             return f"{city}, {region}"
     except asyncio.TimeoutError:
@@ -130,8 +113,12 @@ def parse_logs(lines):
 async def create_message(dic, session):
     messages = []
     for ip,infos in dic.items():
+        message = ""
+        if ip not in cache.ip_cache:
+            message += "[ NEW ]"
+
         ip_details = await get_ipinfo(ip,session)
-        message = f"Ip {ip} ({ip_details}) accessed at {infos['first_access']} and returned status {infos['status']}.\n" 
+        message += f"Ip {ip} ({ip_details}) accessed at {infos['first_access']} and returned status {infos['status']}.\n" 
         if len(infos['uris']) > 0:
             message += f"Accessed uris: {infos['uris']}."
         else:
@@ -148,17 +135,15 @@ async def create_message(dic, session):
 
     return messages
 
-async def handle_log(session: aiohttp.ClientSession):
-    global last_pos
-    
+async def handle_log(session: aiohttp.ClientSession): 
     with open(LOG_PATH,'r') as f:
         cur_size = os.path.getsize(LOG_PATH)
-        if cur_size < last_pos:
+        if cur_size < cache.last_pos:
             logger.info("Log rotation detected")
-            last_pos = 0
-        f.seek(last_pos)
+            cache.last_pos = 0
+        f.seek(cache.last_pos)
         lines = f.readlines()
-        last_pos= f.tell()
+        cache.last_pos= f.tell()
 
     dic = parse_logs(lines)
         
@@ -174,24 +159,14 @@ async def process_log(queue: asyncio.Queue):
             logger.info("New access found")
             await handle_log(session)
 
-def init_cache():
-    global ip_cache
-    ip_cache = defaultdict(new_cache_entry)
-
 async def main():
-    OUTPUTFILE="/var/log/telegram-log-monitor.log"
-    if not os.access(OUTPUTFILE,os.W_OK):
-        OUTPUTFILE=os.path.join(os.path.expanduser('~'),'.local/share/telegram-log-monitor.log')
-
     FORMAT = '[%(levelname)s] %(asctime)s: %(message)s'
-    logging.basicConfig(format=FORMAT,filename=OUTPUTFILE,level=logging.INFO)
-
-    init_cache()
-    
+    logging.basicConfig(format=FORMAT,filename="/var/log/telegram-log-monitor.log",level=logging.INFO)
+ 
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue()
 
-    event_handler = LogHandler(loop,queue)
+    event_handler = LogHandler(loop,queue, LOG_PATH)
     observer = Observer()
     observer.schedule(event_handler,path=LOG_DIR,recursive=False)
     observer.start()
@@ -201,7 +176,7 @@ async def main():
     try:
         await process_log(queue)
     except Exception as e:
-        logger.error(f"Unkown exception ({e}) in main process_log")
+        print(f"Unkown error {e}")
         exit(2)
     finally:
         observer.stop()
