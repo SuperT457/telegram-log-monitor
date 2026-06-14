@@ -4,7 +4,7 @@ set -e
 
 ENVDIR="/etc/telegram-log-monitor"
 DAEMON_DIR="/etc/systemd/system"
-WORKDIR="/usr/local/bin"
+WORKDIR="/usr/local/bin/telegram-log-monitor"
 USER=0
 
 function showhelp(){
@@ -75,18 +75,25 @@ done
 
 
 if [[ ! -d "$WORKDIR" ]]; then
-	echo "$WORKDIR: not a directory"
-	exit 3
+	echo "$WORKDIR: not a directoryi"
+	echo "Create it now? [Y/n]"
+	read ans 
+	if [[ $ans="Y" || $ans="y" ]]; then
+		mkdir -p "$WORKDIR"
+	else
+		exit 3
+	fi
 fi
 
 # Input bot details
 echo "Enter your bot token:"
-read TOKEN
+read -s TOKEN
 
 echo "Enter your chat id:"
-read CHAT_ID
+read -s CHAT_ID
 
-cp "$(dirname "$0")/telegram-log-monitor.py" "$WORKDIR"
+echo $PWD
+cp "$(dirname "$0")"/source/* "$WORKDIR"
 
 # Create environment directory
 mkdir -p "$ENVDIR"
