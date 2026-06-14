@@ -12,9 +12,12 @@ function showhelp(){
 Usage: ./$(basename $0) LOGFILE [OPTION] ... 
 
   --env-path                  path where environment directory will be created. Default is /etc/telegram-log-monitor. 
+
   --script-dir                directory where to save main script. Default is /usr/local/bin. 
+
   --user-service              by default, the daemon is global, and is copied in /etc/systemd/system.
                               Add this flag if you wish to make it a user service.
+
   -h, --help                  show this help
 
   WARNING: if not present, each path specified with these flags will be created
