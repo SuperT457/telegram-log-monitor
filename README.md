@@ -11,7 +11,7 @@ Every time new lines are added to the log file, it parses the logs retrieving cr
 - **Noise Reduction:** to reduce notification volume, the script filters only for specific URIs, considered more critical;
 - **IP Geolocation and Caching:** for a new IP, geographical information is retrieved using `ipinfo.io` APIs, while those already checked are stored in a cache, implemented with a dictionary, to minimize API calls;
 - **Batch Notifications:** at the end of the loop, Telegram Bot APIs are used to alert the user with a message aggregating all the latest accesses;
-- **Logging:** this script generates logs for information and errors. If the user has sufficient privileges, the output log file will be automatically created in `/var/log/telegram-log-monitor.log`, otherwise it'll be stored in `~/.local/share/telegram-log-monitor.log`. 
+- **Logging:** this script generates logs for information and errors. If the user has sufficient privileges, the output log file will be automatically created in `/var/log/telegram-log-monitor.log`; 
 
 ---
 
@@ -41,11 +41,6 @@ Start the container in detached mode:
 docker compose up -d
 ```
 
-To view application logs:
-```bash
-docker compose logs -f
-``` 
-
 To stop the service:
 ```bash
 docker compose down
@@ -54,5 +49,9 @@ docker compose down
 ### Security Notes
 `dotenvx` only encrypts secrets "at rest", for source control security, allowing `.env` files to be committed securely to public repositories. However, in-container environments inherit the decryption key at runtime, meaning anyone with sufficient privileges on the host (or `docker exec` access) can inspect it. 
 
-## Latest upgrades 
+## Latest Updates 
 - Docker containerization and `dotenvx` encryption support;
+
+## Roadmap
+- [ ] Test and extend log monitoring to other web servers (e.g., Nginx, Apache);
+- [ ] Support native Docker logging;
