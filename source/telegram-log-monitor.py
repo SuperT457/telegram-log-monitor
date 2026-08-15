@@ -15,14 +15,14 @@ CHAT_ID = os.getenv("CHAT_ID")
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 # monitored logs path 
-LOG_PATH = os.getenv("LOG_PATH") 
-LOG_DIR = os.path.dirname(LOG_PATH) # for the observer
-
+FILENAME = os.getenv("FILENAME") 
+LOG_DIR = "/var/log/accesses" # for the observer
+LOG_PATH = os.path.join(LOG_DIR,FILENAME)
 
 # script's output logger
 logger = logging.getLogger(__name__)
 
-cache = Cache() # script cache
+cache = Cache() # script cache for IPs and file stream position 
 
 watched_uris = [
         '/',
@@ -40,10 +40,12 @@ async def send_message(text, chat_id):
         logger.error(e)
         return
 
+
 async def run_bot(messages, chat_id):
     text = ' '.join(messages)
     await send_message(text, chat_id)
 
+# create a new dictionary IP entry 
 def new_ip_entry():
     return {
             "first_access": None,
@@ -51,7 +53,9 @@ def new_ip_entry():
             "status": ''
     }
 
+# retrieve some IP address info from ipinfo.io APIs
 async def get_ipinfo(ip,session):
+    # if IP already appeared, used cached information
     if ip in cache.ip_cache:
         entry = cache.ip_cache[ip]
         city = entry['city']
@@ -59,6 +63,7 @@ async def get_ipinfo(ip,session):
         if city and region:
             return f"{city}, {region}"
 
+    # if IP not in cache, query ipinfo.io
     try:
         async with session.get(f"https://ipinfo.io/{ip}/json",timeout=aiohttp.ClientTimeout(total=5)) as res:
             res.raise_for_status()
@@ -72,6 +77,8 @@ async def get_ipinfo(ip,session):
             cache.ip_cache[ip]['region'] = region
 
             return f"{city}, {region}"
+    
+    # error handling
     except asyncio.TimeoutError:
         err_message = f"Connection timed out for ip {ip}"
     except (json.JSONDecodeError,KeyError):
@@ -84,8 +91,9 @@ async def get_ipinfo(ip,session):
     logger.error(err_message)
     return err_message
 
+# collect latest access info
 def parse_logs(lines):
-    dic = defaultdict(new_ip_entry)
+    dic = defaultdict(new_ip_entry) # 
 
     for line in lines:
         try:
@@ -110,12 +118,14 @@ def parse_logs(lines):
     
     return dic
 
+
+# create text message to send
 async def create_message(dic, session):
     messages = []
     for ip,infos in dic.items():
         message = ""
         if ip not in cache.ip_cache:
-            message += "[ NEW ]"
+            message += "[ NEW ] "
 
         ip_details = await get_ipinfo(ip,session)
         message += f"Ip {ip} ({ip_details}) accessed at {infos['first_access']} and returned status {infos['status']}.\n" 
@@ -127,9 +137,10 @@ async def create_message(dic, session):
     
     message_size = sum(len(m) for m in messages)
     
+    # if message is too long, it cannot be sent due to limits imposed by Telegram 
     if message_size > 4096:
         messages=messages[-1:]
-        warn = 'Other IPs were detected but message was too long. Only last acces is being displayed'
+        warn = 'Other IPs were detected but message was too long. Only last access is being displayed'
         logger.warning(warn)
         messages.append(warn)
 
@@ -145,11 +156,11 @@ async def handle_log(session: aiohttp.ClientSession):
         lines = f.readlines()
         cache.last_pos= f.tell()
 
-    dic = parse_logs(lines)
+    dic = parse_logs(lines) # parse info about last accesses
         
-    messages = await create_message(dic,session)
+    messages = await create_message(dic,session) # create message to send via Telegram
     if messages:
-        await run_bot(messages,CHAT_ID)
+        await run_bot(messages,CHAT_ID) # run bot and send message
 
 async def process_log(queue: asyncio.Queue):
     logger.info("Main started")
@@ -168,7 +179,7 @@ async def main():
 
     event_handler = LogHandler(loop,queue, LOG_PATH)
     observer = Observer()
-    observer.schedule(event_handler,path=LOG_DIR,recursive=False)
+    observer.schedule(event_handler,path=LOG_DIR,recursive=False) 
     observer.start()
 
     logger.info("Observer started")

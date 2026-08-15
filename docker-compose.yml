@@ -1,0 +1,13 @@
+services:
+  main:
+    build: .
+    restart: unless-stopped
+    env_file: 
+     - .env.keys
+    environment:
+      PYTHONUNBUFFERED: "1"  
+    volumes:
+      - type: bind
+        source: ${SHARED_LOG_DIR}
+        target: /var/log/accesses
+        read_only: true
