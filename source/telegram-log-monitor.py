@@ -26,12 +26,10 @@ cache = Cache() # script cache for IPs and file stream position
 
 watched_uris = [
         '/',
-        '/api/config',
-        '/identity/connect/token',
-        '/api/sync'
+        '/api/config'
 ]
 
-# bot send message
+
 async def send_message(text, chat_id):
     try:
         async with bot:
@@ -164,32 +162,42 @@ async def handle_log(session: aiohttp.ClientSession):
 
 async def process_log(queue: asyncio.Queue):
     logger.info("Main started")
+
+    # Create reusable HTTP session
     async with aiohttp.ClientSession() as session:
         while True:
+            # wait until a new event is detected
             await queue.get()
+
+            # handle event
             logger.info("New access found")
             await handle_log(session)
 
 async def main():
     FORMAT = '[%(levelname)s] %(asctime)s: %(message)s'
-    logging.basicConfig(format=FORMAT,filename="/var/log/telegram-log-monitor.log",level=logging.INFO)
- 
+    logging.basicConfig(format=FORMAT,level=logging.INFO)
+    
+    # Get running loop and initialize queue
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue()
 
-    event_handler = LogHandler(loop,queue, LOG_PATH)
+    # Configure Watchdog Observer to monitor log directory
+    event_handler = LogHandler(loop, queue, LOG_PATH)
     observer = Observer()
-    observer.schedule(event_handler,path=LOG_DIR,recursive=False) 
+    observer.schedule(event_handler,path=LOG_DIR,recursive=False)
+    
+    # Start observer thread in background
     observer.start()
-
     logger.info("Observer started")
 
     try:
+        # start log processing loop
         await process_log(queue)
     except Exception as e:
-        print(f"Unkown error {e}")
+        logger.error(f"Unknown error: {e}", exc_info=True)
         exit(2)
     finally:
+        # Graceful shutdown of observer thread
         observer.stop()
         observer.join()
 

@@ -46,12 +46,19 @@ To stop the service:
 docker compose down
 ```
 
+To view logs:
+```bash
+docker logs -f telegram-log-monitor-main-1
+```
+
+
 ### Security Notes
 `dotenvx` only encrypts secrets "at rest", for source control security, allowing `.env` files to be committed securely to public repositories. However, in-container environments inherit the decryption key at runtime, meaning anyone with sufficient privileges on the host (or `docker exec` access) can inspect it. 
 
 ## Latest Updates 
 - Docker containerization and `dotenvx` encryption support;
+- Improved Logging;
+- Added some comments;
 
 ## Roadmap
 - [ ] Test and extend log monitoring to other web servers (e.g., Nginx, Apache);
-- [ ] Support native Docker logging;
